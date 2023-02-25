@@ -1,0 +1,57 @@
+---
+version: "2"
+x-redash-service: &redash-service
+  image: redash/redash:8.0.0.b32245
+  depends_on:
+    - postgres
+    - redis
+  restart: always
+services:
+  server:
+    <<: *redash-service
+    command: server
+    ports:
+      - "15000:5000"
+    environment:
+      PYTHONUNBUFFERED: 0
+      REDASH_LOG_LEVEL: "INFO"
+      REDASH_REDIS_URL: "redis://redis:6379/0"
+      REDASH_FEATURE_SHOW_PERMISSIONS_CONTROL: true
+      REDASH_DATABASE_URL: "postgresql://postgres:5432/postgres.db"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+  redis:
+    image: redis:5.0-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+  postgres:
+    build: .
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres.db:/data/postgres.db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+  nginx:
+    image: redash/nginx:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    links:
+      - server:redash
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
